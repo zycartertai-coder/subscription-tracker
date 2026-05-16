@@ -77,3 +77,14 @@ body {
 
 .toast { position: fixed; left: 16px; right: 16px; bottom: calc(90px + var(--safe-bottom)); background: var(--fg); color: white; padding: 12px 16px; border-radius: 12px; display: flex; gap: 12px; align-items: center; z-index: 20; }
 .toast-action { background: var(--accent); color: white; border: 0; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+
+#a2hs-tip {
+  position: fixed; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom));
+  background: var(--fg); color: white; padding: 10px 12px; border-radius: 12px;
+  display: flex; align-items: center; gap: 8px; z-index: 5; font-size: 14px;
+  box-shadow: 0 6px 16px rgba(11, 27, 58, 0.25);
+}
+#a2hs-dismiss {
+  margin-left: auto; background: transparent; border: 0; color: white;
+  font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px;
+}

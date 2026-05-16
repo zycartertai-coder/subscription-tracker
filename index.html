@@ -12,6 +12,10 @@
   <link rel="stylesheet" href="styles/app.css" />
 </head>
 <body>
+  <div id="a2hs-tip" hidden>
+    <span>Install: tap <strong>Share → Add to Home Screen</strong> for the full app experience.</span>
+    <button type="button" id="a2hs-dismiss" aria-label="Dismiss">×</button>
+  </div>
   <div id="app-root"></div>
   <div id="toast-root"></div>
   <script type="module" src="src/app.js"></script>
@@ -19,6 +23,14 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
     }
+    (function () {
+      const tip = document.getElementById('a2hs-tip');
+      const dismiss = document.getElementById('a2hs-dismiss');
+      const KEY = 'subtracker.a2hsDismissed';
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (!standalone && !localStorage.getItem(KEY)) tip.hidden = false;
+      dismiss.addEventListener('click', () => { tip.hidden = true; localStorage.setItem(KEY, '1'); });
+    })();
   </script>
 </body>
 </html>

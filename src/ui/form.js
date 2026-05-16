@@ -97,6 +97,7 @@ export function formView({ doc, store, navigate, subId = null }) {
       h('button', { type: 'submit', class: 'btn-primary' }, editing ? 'Save changes' : 'Add subscription'),
       h('a', { href: '#/', class: 'btn-secondary' }, 'Cancel')
     ),
+    editing && h('button', { type: 'button', class: 'btn-secondary', onClick: onReexport }, 'Re-export to Calendar'),
     editing && h('button', { type: 'button', class: 'btn-danger', onClick: onDelete }, 'Delete subscription'),
     editing && existing.url && h('a', { href: existing.url, target: '_blank', rel: 'noopener noreferrer', class: 'link-open-account' }, 'Open account')
   );
@@ -129,6 +130,12 @@ export function formView({ doc, store, navigate, subId = null }) {
       label: editing ? 'Update' : 'Add',
       onClick: () => downloadIcs(`${saved.name}.ics`, ics)
     });
+  }
+
+  function onReexport() {
+    const ics = buildIcs(existing, doc.settings, { baseUrl: BASE_URL, method: 'REQUEST' });
+    downloadIcs(`${existing.name}.ics`, ics);
+    toast('Re-exported calendar reminder.');
   }
 
   async function onDelete() {
