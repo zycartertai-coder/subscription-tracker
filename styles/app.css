@@ -1,0 +1,79 @@
+:root {
+  --bg: #f6f7fb;
+  --fg: #0b1b3a;
+  --muted: #5b6478;
+  --accent: #2c5dff;
+  --upcoming-bg: #e0ebff;
+  --overdue-bg: #ffe1ec;
+  --danger: #c1264a;
+  --card: #ffffff;
+  --border: #e1e4ec;
+  --safe-top: env(safe-area-inset-top, 0);
+  --safe-bottom: env(safe-area-inset-bottom, 0);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg); color: var(--fg);
+  min-height: 100vh;
+}
+
+.screen { padding: calc(12px + var(--safe-top)) 16px calc(96px + var(--safe-bottom)); max-width: 640px; margin: 0 auto; }
+.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.topbar .totals { flex: 1; display: flex; gap: 12px; }
+.total-mo { font-weight: 700; }
+.total-yr { color: var(--muted); }
+.cog { text-decoration: none; font-size: 22px; color: var(--fg); }
+.back { text-decoration: none; color: var(--accent); }
+
+.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.status-grey { background: #b5bbcc; }
+.status-green { background: #2ecc71; }
+.status-amber { background: #f5a623; }
+.status-red { background: #d0021b; }
+
+.empty { color: var(--muted); padding: 32px 0; text-align: center; }
+
+.sub-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.sub-row { background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; }
+.sub-row.row-upcoming { background: var(--upcoming-bg); }
+.sub-row.row-overdue { background: var(--overdue-bg); }
+.sub-link { flex: 1; padding: 12px 14px; text-decoration: none; color: inherit; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+.sub-name { font-weight: 600; }
+.sub-amount { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.sub-when { grid-column: 1 / 2; color: var(--muted); font-size: 14px; }
+.chip { grid-column: 2 / 3; justify-self: end; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #eef1f8; color: var(--muted); }
+.sub-extlink { padding: 12px 14px; text-decoration: none; color: var(--accent); }
+
+.fab {
+  position: fixed; right: 20px; bottom: calc(20px + var(--safe-bottom));
+  width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: white;
+  font-size: 32px; text-decoration: none; display: grid; place-items: center;
+  box-shadow: 0 6px 16px rgba(44, 93, 255, 0.35);
+}
+
+.sub-form { display: grid; gap: 12px; }
+.sub-form label { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+.sub-form input, .sub-form select, .sub-form textarea {
+  font: inherit; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--fg);
+}
+.sub-form textarea { min-height: 80px; resize: vertical; }
+.form-actions { display: flex; gap: 8px; margin-top: 12px; }
+.btn-primary { background: var(--accent); color: white; border: 0; padding: 10px 16px; border-radius: 10px; font-weight: 600; }
+.btn-secondary { background: white; color: var(--accent); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; text-decoration: none; }
+.btn-danger { background: white; color: var(--danger); border: 1px solid var(--danger); padding: 10px 16px; border-radius: 10px; margin-top: 16px; }
+.link-open-account { display: inline-block; margin-top: 12px; color: var(--accent); }
+
+.screen-settings section { margin: 16px 0; padding: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.screen-settings h2 { margin: 0 0 8px; font-size: 16px; }
+.token-input { width: 100%; margin: 8px 0; }
+.import-label { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: grid; place-items: center; z-index: 10; }
+.modal { background: white; padding: 20px; border-radius: 12px; max-width: 320px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(90px + var(--safe-bottom)); background: var(--fg); color: white; padding: 12px 16px; border-radius: 12px; display: flex; gap: 12px; align-items: center; z-index: 20; }
+.toast-action { background: var(--accent); color: white; border: 0; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
