@@ -79,12 +79,15 @@ body {
 .toast-action { background: var(--accent); color: white; border: 0; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
 
 #a2hs-tip {
-  position: fixed; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom));
+  position: fixed; left: 12px; right: 12px; top: calc(8px + var(--safe-top));
   background: var(--fg); color: white; padding: 10px 12px; border-radius: 12px;
-  display: flex; align-items: center; gap: 8px; z-index: 5; font-size: 14px;
+  display: flex; align-items: center; gap: 8px; z-index: 30; font-size: 14px;
   box-shadow: 0 6px 16px rgba(11, 27, 58, 0.25);
 }
 #a2hs-dismiss {
   margin-left: auto; background: transparent; border: 0; color: white;
-  font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px;
+  font-size: 28px; line-height: 1; cursor: pointer;
+  min-width: 44px; min-height: 44px; padding: 0;
+  display: grid; place-items: center;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.25);
 }

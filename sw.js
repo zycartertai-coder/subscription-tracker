@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-shell-v1';
+const CACHE_NAME = 'subtracker-shell-v2';
 const SHELL = [
   './',
   './index.html',
