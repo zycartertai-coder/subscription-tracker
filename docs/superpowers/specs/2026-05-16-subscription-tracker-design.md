@@ -68,6 +68,7 @@ A single JSON document represents the entire app state. The same shape is used f
       "id": "uuid-v4",
       "name": "Netflix",
       "amount": 12.99,
+      "url": "https://example.com/account",  // optional — link to the merchant's account / management page
       "frequency": "monthly",        // monthly | yearly | weekly | custom-days
       "customIntervalDays": null,    // required iff frequency === "custom-days"
       "nextPaymentDate": "2026-06-01",
@@ -90,6 +91,7 @@ Notes:
 - **Trial end date** generates a separate one-off `VEVENT` distinct from the recurring renewal event.
 - **Categories and payment methods are freeform strings** with autocomplete sourced from existing entries — avoids a fixed taxonomy while keeping consistency.
 - **Deletes are hard deletes.** No tombstones, no history in v1.
+- **`url`** is optional. When present, it appears as a tappable "Open account" link on the Edit screen, as a small link icon on the List row, and as a `URL` property inside the generated `.ics` so Apple Calendar shows it on the event.
 - **Root `updatedAt`** is recomputed by the store on every mutation as the maximum of `settings.updatedAt` and every `subscriptions[].updatedAt`. The sync layer compares document-level `updatedAt` values, not the gist's metadata `updated_at`.
 - **PAT** is stored under a separate `localStorage` key (`subtracker.gistToken`), not in this document, so exports and gist contents never contain the token.
 
@@ -100,13 +102,14 @@ Single-page app with hash-based routing. Four logical screens, mobile-first, sin
 ### 5.1 List / Home (`#/`)
 
 - Top bar: monthly total (e.g. "£42.86 /mo · £514.32 /yr") and a settings cog.
-- Sorted list of subscriptions; each row shows name, amount + frequency, next payment date with relative time ("in 4 days"), and a small category chip.
-- Rows are tinted amber if a payment is within `reminderDaysBefore`, red if today or overdue.
+- Sorted list of subscriptions; each row shows name, amount + frequency, next payment date with relative time ("in 4 days"), a small category chip, and — when `url` is set — a small link icon that opens the merchant page in a new tab without entering Edit.
+- Rows are tinted blue if a payment is within `reminderDaysBefore`, pink if today or overdue.
 - Floating "+" button bottom-right opens `#/new`. Safe-area inset respected so it does not sit under the iOS home indicator.
 
 ### 5.2 Add / Edit (`#/new`, `#/edit/<id>`)
 
-- Form covering every field in §4.
+- Form covering every field in §4: name, amount, `url`, frequency (+ custom interval days when applicable), next payment date, category, payment method, notes, trial end date, reminder lead time.
+- The `url` field is a single-line text input with `inputmode="url"` and basic validation (must be empty or start with `http://` / `https://`). When set, the Edit screen shows an "Open account" link below the field that opens the URL in a new tab.
 - "Save" button; after save, returns to the list with a toast offering "Add to Calendar" (new) / "Update Calendar reminder" (edit). See §6.
 - "Delete" button on edit screen with a confirm.
 
@@ -133,6 +136,7 @@ The app generates per-subscription `.ics` files. Apple Calendar handles all noti
 - `UID` = the subscription's UUID, so re-imports update the same calendar event.
 - `SEQUENCE` = the subscription's `icsSequence`, bumped on every edit before generating the `.ics`.
 - `SUMMARY` = "<name> – <currency><amount>"; `DESCRIPTION` = notes plus a deep link back to the PWA edit screen.
+- `URL` = subscription's `url` field (when set), so Apple Calendar shows a tappable link on the event.
 - For subscriptions with `trialEndDate`, a second one-off `VEVENT` with no `RRULE` and `UID` = `trial-<subscription-id>`.
 
 ### 6.2 User flow
@@ -237,12 +241,16 @@ Per the user's standing rule, Red/Green TDD is required for all feature developm
 
 ## 12. v2 backlog
 
-- **Bank account linking via Open Banking.** Likely route: GoCardless Bank Account Data API (free in UK/EU for personal use), Cloudflare Workers backend to hold OAuth tokens, 90-day re-consent UX. Auto-suggest recurring transactions as candidate subscriptions.
-- Possible interim step: CSV import from bank statements with recurring-transaction detection.
+- **CSV import from bank statements (primary v2 feature).** User exports a CSV from their banking app and imports it via a new Settings action. The app groups transactions by merchant/amount, detects recurring patterns (same payee, same/similar amount, regular cadence), and presents a list of *candidate subscriptions* for the user to confirm before they are added. Stays no-backend; entirely client-side parsing.
+  - Scope decisions to resolve in the v2 design: which UK bank CSV formats to support out of the box (e.g., Monzo, Starling, Barclays, HSBC), how strict the recurring-detection heuristic is, and how to handle matching against subscriptions already added manually (avoid duplicates).
 - Multi-currency support with FX conversion for the dashboard.
 - Push notifications via Web Push (server cron + subscription) for users who don't want calendar reminders.
 - Spend analytics: category breakdowns, month-over-month change.
 - Multi-device real-time sync via a proper backend.
+
+### Later (post-v2)
+
+- **Bank account linking via Open Banking.** Would supersede CSV import with automatic continuous sync. Route: GoCardless Bank Account Data API (free in UK/EU for personal use) plus a Cloudflare Workers backend to hold OAuth tokens; 90-day re-consent UX. Deferred until v2 (CSV import) proves the recurring-detection heuristic is useful enough to be worth automating.
 
 ## 13. Open questions
 
