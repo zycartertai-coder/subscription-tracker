@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement v1 of the subscription tracker exactly as defined in `docs/superpowers/specs/2026-05-16-subscription-tracker-design.md` — a personal PWA on iPhone that tracks recurring subscriptions, exports per-subscription `.ics` files for Apple Calendar reminders, persists data in `localStorage` with auto-sync to a private GitHub Gist, and offers a manual JSON export/import fallback.
+**Goal:** Implement v1 of the subscription tracker exactly as defined in `docs/superpowers/specs/2026-05-16-subscription-tracker-design.md` — a personal PWA on iPhone that tracks recurring subscriptions, exports per-subscription `.ics` files for Apple Calendar reminders, persists data in `localStorage`, and offers manual JSON export/import to Files / iCloud Drive as the durability path. Gist auto-sync is deferred to v2.
 
-**Architecture:** Static site served by GitHub Pages from the repository root. No bundler, no transpiler, no runtime npm dependencies. Pure ES modules in the browser. Pure-logic modules (`store`, `sync`, `ics`, `totals`, `lib/date`) are unit-tested under Node using the built-in `node:test` runner. UI modules are kept deliberately thin and verified on-device.
+**Architecture:** Static site served by GitHub Pages from the repository root. No bundler, no transpiler, no runtime npm dependencies. Pure ES modules in the browser. Pure-logic modules (`store`, `ics`, `totals`, `lib/date`) are unit-tested under Node using the built-in `node:test` runner. UI modules are kept deliberately thin and verified on-device. v1 makes no outbound API calls at runtime.
 
-**Tech Stack:** Vanilla HTML / CSS / JavaScript (ES modules). Node ≥ 20 for tests. `sharp` as a devDependency for icon generation. GitHub Pages for hosting. GitHub Gists for off-device sync. Apple Calendar for reminders.
+**Tech Stack:** Vanilla HTML / CSS / JavaScript (ES modules). Node ≥ 20 for tests. `sharp` as a devDependency for icon generation. GitHub Pages for hosting. Apple Calendar for reminders.
 
 **Reference spec:** `docs/superpowers/specs/2026-05-16-subscription-tracker-design.md`. Whenever the plan references "the spec" without further qualification, that is the document.
 
@@ -25,27 +25,25 @@ Files created or modified during this plan, with each file's single responsibili
 | `src/totals.js` | 4 | Pure math: monthly/yearly equivalent per subscription, summed totals. |
 | `src/store.js` | 5 | Single source of truth for the data document. CRUD mutations, `localStorage` persistence, subscriber callbacks, JSON export/import, `icsSequence` bumping. |
 | `src/ics.js` | 6 | Pure `.ics` text generation for create/update/cancel + trial events. |
-| `src/sync.js` | 7 | Gist push/pull, 2-second push debounce, status (`grey | green | amber | red`), retry on `online`, conflict prompt callback. |
-| `src/ui/components.js` | 8 | Small DOM building blocks: `toast()`, `statusDot()`, `chip()`, confirm dialog. |
-| `src/ui/list.js` | 9 | List / Home view. |
-| `src/ui/form.js` | 10 | Add / Edit view. |
-| `src/ui/settings.js` | 11 | Settings view (sync, defaults, export/import). |
-| `src/app.js` | 12 | Bootstrap: hash router, store/sync init, render dispatch. |
-| `src/config.js` | 12 | One-line site base URL constant used in `.ics` deep links. |
-| `index.html` | 13 | App shell: meta, manifest link, root mount node. |
-| `styles/app.css` | 13 | Mobile-first stylesheet. |
-| `manifest.webmanifest` | 14 | PWA manifest. |
-| `sw.js` | 14 | Service worker — pre-cache app shell, network-first for data calls. |
-| `icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png`, `icons/apple-touch-icon.png` | 15 | Generated raster icons. |
-| `tools/icon-source.svg` | 15 | Single source SVG for all icons. |
-| `tools/make-icons.mjs` | 15 | Regenerates the four PNGs from the SVG using `sharp`. |
+| `src/ui/components.js` | 7 | Small DOM building blocks: `toast()`, `chip()`, confirm dialog. |
+| `src/ui/list.js` | 8 | List / Home view. |
+| `src/ui/form.js` | 9 | Add / Edit view. |
+| `src/ui/settings.js` | 10 | Settings view (defaults + JSON export/import). |
+| `src/app.js` | 11 | Bootstrap: hash router, store init, render dispatch. |
+| `src/config.js` | 11 | One-line site base URL constant used in `.ics` deep links. |
+| `index.html` | 12 | App shell: meta, manifest link, root mount node. |
+| `styles/app.css` | 12 | Mobile-first stylesheet. |
+| `manifest.webmanifest` | 13 | PWA manifest. |
+| `sw.js` | 13 | Service worker — pre-cache app shell. |
+| `icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png`, `icons/apple-touch-icon.png` | 14 | Generated raster icons. |
+| `tools/icon-source.svg` | 14 | Single source SVG for all icons. |
+| `tools/make-icons.mjs` | 14 | Regenerates the four PNGs from the SVG using `sharp`. |
 | `tests/lib/date.test.js` | 2 | |
 | `tests/totals.test.js` | 4 | |
 | `tests/store.test.js` | 5 | |
 | `tests/ics.test.js` | 6 | |
-| `tests/sync.test.js` | 7 | |
-| `README.md` | 16 | Setup, deploy, on-device install instructions, manual smoke-test checklist. |
-| `.github/workflows/test.yml` | 16 | Run `npm test` on push/PR. |
+| `README.md` | 15 | Setup, deploy, on-device install instructions, manual smoke-test checklist. |
+| `.github/workflows/test.yml` | 15 | Run `npm test` on push/PR. |
 
 ---
 
@@ -56,7 +54,7 @@ These apply to every task. They're called out here so individual tasks don't rep
 - **ES modules everywhere.** All source files use `import`/`export`. `package.json` has `"type": "module"`.
 - **No runtime npm dependencies.** Browser code must run without `node_modules`. Only `sharp` and the test runner (built into Node) are allowed as dev-time tools.
 - **TDD (Red/Green).** For every testable module, write the failing test first, run it, see it fail, then implement, then see it pass, then commit. The user's `CLAUDE.md` mandates this.
-- **Test runner.** `node --test tests/`. Tests use `node:test` and `node:assert/strict`. Tests must not perform network I/O; sync tests inject a stub `fetch`.
+- **Test runner.** `node --test tests/`. Tests use `node:test` and `node:assert/strict`. v1 makes no network calls at runtime, so tests have nothing to stub.
 - **Commit cadence.** One commit per task, at the end of the task, with a conventional-commit-style message and the `Co-Authored-By` trailer.
 - **Date in IDs and timestamps.** Code that needs the current time takes an injected clock (`now()` function) defaulting to `() => new Date()`, so tests are deterministic.
 - **No `any`, no `eval`, no `with`.** Pure JS; keep types informally documented via JSDoc where it aids reading.
@@ -141,7 +139,7 @@ EOF
 - Create: `src/lib/date.js`
 - Test: `tests/lib/date.test.js`
 
-This module is small but used everywhere: List relative-time labels, ICS dates, sync timestamps.
+This module is small but used everywhere: List relative-time labels, ICS dates, document timestamps.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -632,25 +630,26 @@ test('importJson merge upserts by id', () => {
   assert.ok(subs.find(s => s.id === 'imported-1'));
 });
 
-test('replaceDocument used by sync.pull overwrites without bumping anything', () => {
+test('replaceDocument overwrites the document without bumping anything (reserved for v2 sync)', () => {
   uuidCounter = 0;
   const clock = fixedClock('2026-05-16T10:00:00Z');
   const store = createStore({ storage: memoryStorage(), now: clock.now, uuid: deterministicUuid });
   const incoming = {
     version: 1,
     updatedAt: '2026-05-16T09:00:00Z',
-    settings: { currency: 'GBP', defaultReminderDays: 2, gistId: 'g1', tokenHint: 'ghp_...abcd', sync: { lastPushedAt: null, lastFetchedRemoteUpdatedAt: null }, updatedAt: '2026-05-16T09:00:00Z' },
+    settings: { currency: 'GBP', defaultReminderDays: 5, updatedAt: '2026-05-16T09:00:00Z' },
     subscriptions: []
   };
   store.replaceDocument(incoming);
-  assert.equal(store.getDocument().settings.gistId, 'g1');
+  assert.equal(store.getDocument().settings.defaultReminderDays, 5);
+  assert.equal(store.getDocument().updatedAt, '2026-05-16T09:00:00Z');
 });
 ```
 
 - [ ] **Step 2: Run tests, expect failures**
 
 Run: `node --test tests/store.test.js`
-Expected: all twelve tests fail (module missing).
+Expected: all eleven tests fail (module missing).
 
 - [ ] **Step 3: Implement `src/store.js`**
 
@@ -663,9 +662,6 @@ export const EMPTY_DOCUMENT = Object.freeze({
   settings: Object.freeze({
     currency: 'GBP',
     defaultReminderDays: 2,
-    gistId: null,
-    tokenHint: null,
-    sync: Object.freeze({ lastPushedAt: null, lastFetchedRemoteUpdatedAt: null }),
     updatedAt: '1970-01-01T00:00:00.000Z'
   }),
   subscriptions: []
@@ -773,7 +769,6 @@ export function createStore({ storage, now, uuid }) {
     updateSettings(patch) {
       const ts = nowIso();
       doc.settings = { ...doc.settings, ...patch, updatedAt: ts };
-      if (patch.sync) doc.settings.sync = { ...doc.settings.sync, ...patch.sync };
       doc.updatedAt = ts;
       persist();
     },
@@ -810,7 +805,7 @@ export function createStore({ storage, now, uuid }) {
 - [ ] **Step 4: Run tests, expect pass**
 
 Run: `node --test tests/store.test.js`
-Expected: all twelve tests pass.
+Expected: all eleven tests pass.
 
 - [ ] **Step 5: Commit**
 
@@ -1059,334 +1054,7 @@ EOF
 
 ---
 
-## Task 7: Sync (`src/sync.js`)
-
-**Files:**
-- Create: `src/sync.js`
-- Test: `tests/sync.test.js`
-
-Per spec §7. Sync is a stateful module: it owns the debounce timer, the current status, and the pending push promise. It does not read/write `localStorage` itself; it operates on `store` via injected `getDocument()` / `replaceDocument()` callbacks and reports status changes via a callback. All HTTP is via an injected `fetch` so tests can stub it.
-
-GitHub Gist API contracts used:
-- `GET https://api.github.com/gists/{gist_id}` — read file contents.
-- `PATCH https://api.github.com/gists/{gist_id}` with `files: { 'subscription-tracker.json': { content: '...' } }`.
-- `POST https://api.github.com/gists` with `public: false, files: { 'subscription-tracker.json': { content: '...' } }` — create initial gist.
-- All requests use header `Authorization: Bearer <token>`.
-
-- [ ] **Step 1: Write the failing tests**
-
-Create `tests/sync.test.js`:
-
-```js
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { createSync } from '../src/sync.js';
-
-function stubFetch(handler) {
-  const calls = [];
-  const fn = async (url, init) => {
-    calls.push({ url, init });
-    return handler(url, init);
-  };
-  fn.calls = calls;
-  return fn;
-}
-
-function jsonResponse(body, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-    text: async () => JSON.stringify(body)
-  };
-}
-
-function makeFakeStore(initialDoc) {
-  let doc = JSON.parse(JSON.stringify(initialDoc));
-  return {
-    getDocument: () => doc,
-    replaceDocument: (incoming) => { doc = JSON.parse(JSON.stringify(incoming)); },
-    updateSettings: (patch) => { doc.settings = { ...doc.settings, ...patch, sync: { ...doc.settings.sync, ...(patch.sync ?? {}) } }; }
-  };
-}
-
-const baseDoc = {
-  version: 1,
-  updatedAt: '2026-05-16T10:00:00.000Z',
-  settings: {
-    currency: 'GBP', defaultReminderDays: 2, gistId: null, tokenHint: null,
-    sync: { lastPushedAt: null, lastFetchedRemoteUpdatedAt: null },
-    updatedAt: '2026-05-16T10:00:00.000Z'
-  },
-  subscriptions: []
-};
-
-test('createGist creates a private gist, stores gistId and tokenHint, returns gistId', async () => {
-  const store = makeFakeStore(baseDoc);
-  const fetch = stubFetch((url, init) => {
-    assert.equal(url, 'https://api.github.com/gists');
-    assert.equal(init.method, 'POST');
-    const body = JSON.parse(init.body);
-    assert.equal(body.public, false);
-    assert.ok(body.files['subscription-tracker.json']);
-    return jsonResponse({ id: 'gist-abc' }, 201);
-  });
-
-  const sync = createSync({ store, fetch, token: 'ghp_secret_token', onStatusChange: () => {} });
-  const gistId = await sync.createGist();
-
-  assert.equal(gistId, 'gist-abc');
-  assert.equal(store.getDocument().settings.gistId, 'gist-abc');
-  assert.equal(store.getDocument().settings.tokenHint, 'ghp_…oken');
-});
-
-test('push PATCHes the configured gist and updates sync.lastPushedAt', async () => {
-  const store = makeFakeStore({
-    ...baseDoc,
-    settings: { ...baseDoc.settings, gistId: 'gist-abc' }
-  });
-  const fetch = stubFetch((url, init) => {
-    assert.equal(url, 'https://api.github.com/gists/gist-abc');
-    assert.equal(init.method, 'PATCH');
-    return jsonResponse({ id: 'gist-abc' });
-  });
-  const statuses = [];
-  const sync = createSync({ store, fetch, token: 'ghp_token', onStatusChange: (s) => statuses.push(s) });
-
-  await sync.push();
-  assert.ok(store.getDocument().settings.sync.lastPushedAt);
-  assert.deepEqual(statuses[statuses.length - 1], { state: 'green', message: 'Synced' });
-});
-
-test('pull replaces the local document when remote updatedAt is newer', async () => {
-  const store = makeFakeStore({ ...baseDoc, settings: { ...baseDoc.settings, gistId: 'gist-abc' } });
-  const remote = { ...baseDoc, updatedAt: '2026-05-17T10:00:00.000Z' };
-  const fetch = stubFetch(() =>
-    jsonResponse({ files: { 'subscription-tracker.json': { content: JSON.stringify(remote) } } })
-  );
-
-  const sync = createSync({ store, fetch, token: 'ghp_token', onStatusChange: () => {} });
-  const result = await sync.pull();
-
-  assert.equal(result.outcome, 'replaced');
-  assert.equal(store.getDocument().updatedAt, '2026-05-17T10:00:00.000Z');
-});
-
-test('pull keeps local when remote is older', async () => {
-  const store = makeFakeStore({ ...baseDoc, settings: { ...baseDoc.settings, gistId: 'gist-abc' } });
-  const remote = { ...baseDoc, updatedAt: '2026-05-15T00:00:00.000Z' };
-  const fetch = stubFetch(() =>
-    jsonResponse({ files: { 'subscription-tracker.json': { content: JSON.stringify(remote) } } })
-  );
-
-  const sync = createSync({ store, fetch, token: 'ghp_token', onStatusChange: () => {} });
-  const result = await sync.pull();
-  assert.equal(result.outcome, 'kept-local');
-});
-
-test('pull surfaces a conflict when remote moved AND local is dirty', async () => {
-  const dirtyDoc = {
-    ...baseDoc,
-    updatedAt: '2026-05-18T10:00:00.000Z',
-    settings: {
-      ...baseDoc.settings, gistId: 'gist-abc',
-      sync: { lastPushedAt: '2026-05-17T08:00:00.000Z', lastFetchedRemoteUpdatedAt: '2026-05-17T08:00:00.000Z' }
-    }
-  };
-  const store = makeFakeStore(dirtyDoc);
-  const remote = { ...baseDoc, updatedAt: '2026-05-18T09:00:00.000Z' };
-  const fetch = stubFetch(() =>
-    jsonResponse({ files: { 'subscription-tracker.json': { content: JSON.stringify(remote) } } })
-  );
-
-  const sync = createSync({ store, fetch, token: 'ghp_token', onStatusChange: () => {} });
-  const result = await sync.pull();
-  assert.equal(result.outcome, 'conflict');
-  assert.equal(result.remote.updatedAt, '2026-05-18T09:00:00.000Z');
-});
-
-test('push on a 401 sets status red and rethrows', async () => {
-  const store = makeFakeStore({ ...baseDoc, settings: { ...baseDoc.settings, gistId: 'gist-abc' } });
-  const fetch = stubFetch(() => jsonResponse({ message: 'Bad credentials' }, 401));
-  const statuses = [];
-  const sync = createSync({ store, fetch, token: 'bad', onStatusChange: (s) => statuses.push(s) });
-
-  await assert.rejects(() => sync.push());
-  assert.equal(statuses[statuses.length - 1].state, 'red');
-});
-
-test('schedulePush debounces multiple calls into a single push', async () => {
-  const store = makeFakeStore({ ...baseDoc, settings: { ...baseDoc.settings, gistId: 'gist-abc' } });
-  const fetch = stubFetch(() => jsonResponse({ id: 'gist-abc' }));
-  const sync = createSync({ store, fetch, token: 't', onStatusChange: () => {}, debounceMs: 10 });
-
-  sync.schedulePush();
-  sync.schedulePush();
-  sync.schedulePush();
-
-  await new Promise((r) => setTimeout(r, 50));
-  assert.equal(fetch.calls.length, 1);
-});
-```
-
-- [ ] **Step 2: Run tests, expect failures**
-
-Run: `node --test tests/sync.test.js`
-Expected: all tests fail (module missing).
-
-- [ ] **Step 3: Implement `src/sync.js`**
-
-```js
-const API = 'https://api.github.com';
-const FILENAME = 'subscription-tracker.json';
-
-function tokenHint(token) {
-  if (!token || token.length < 8) return null;
-  return `${token.slice(0, 4)}…${token.slice(-4)}`;
-}
-
-function authHeader(token) {
-  return { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
-}
-
-export function createSync({ store, fetch, token, onStatusChange, debounceMs = 2000 }) {
-  let pushTimer = null;
-  let pushing = false;
-
-  function setStatus(state, message) {
-    onStatusChange({ state, message });
-  }
-
-  async function createGist() {
-    setStatus('amber', 'Creating gist…');
-    const doc = store.getDocument();
-    const res = await fetch(`${API}/gists`, {
-      method: 'POST',
-      headers: { ...authHeader(token), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        description: 'Subscription Tracker data',
-        public: false,
-        files: { [FILENAME]: { content: JSON.stringify(doc, null, 2) } }
-      })
-    });
-    if (!res.ok) {
-      setStatus('red', `Gist creation failed: ${res.status}`);
-      throw new Error(`Gist creation failed: ${res.status}`);
-    }
-    const body = await res.json();
-    store.updateSettings({
-      gistId: body.id,
-      tokenHint: tokenHint(token),
-      sync: { lastPushedAt: new Date().toISOString(), lastFetchedRemoteUpdatedAt: doc.updatedAt }
-    });
-    setStatus('green', 'Synced');
-    return body.id;
-  }
-
-  async function push() {
-    const doc = store.getDocument();
-    const gistId = doc.settings.gistId;
-    if (!gistId) throw new Error('No gistId configured');
-    pushing = true;
-    setStatus('amber', 'Pushing…');
-    try {
-      const res = await fetch(`${API}/gists/${gistId}`, {
-        method: 'PATCH',
-        headers: { ...authHeader(token), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: { [FILENAME]: { content: JSON.stringify(doc, null, 2) } } })
-      });
-      if (!res.ok) {
-        setStatus('red', `Push failed: ${res.status}`);
-        throw new Error(`Push failed: ${res.status}`);
-      }
-      store.updateSettings({
-        sync: { lastPushedAt: new Date().toISOString(), lastFetchedRemoteUpdatedAt: doc.updatedAt }
-      });
-      setStatus('green', 'Synced');
-    } finally {
-      pushing = false;
-    }
-  }
-
-  async function pull() {
-    const doc = store.getDocument();
-    const gistId = doc.settings.gistId;
-    if (!gistId) throw new Error('No gistId configured');
-    setStatus('amber', 'Pulling…');
-    const res = await fetch(`${API}/gists/${gistId}`, { headers: authHeader(token) });
-    if (!res.ok) {
-      setStatus('red', `Pull failed: ${res.status}`);
-      throw new Error(`Pull failed: ${res.status}`);
-    }
-    const body = await res.json();
-    const content = body.files?.[FILENAME]?.content;
-    if (!content) throw new Error(`Gist missing file: ${FILENAME}`);
-    const remote = JSON.parse(content);
-
-    const localDirty = isDirty(doc);
-    const remoteMoved = remote.updatedAt > doc.settings.sync.lastFetchedRemoteUpdatedAt;
-    if (remoteMoved && localDirty) {
-      setStatus('amber', 'Conflict');
-      return { outcome: 'conflict', remote };
-    }
-    if (remote.updatedAt > doc.updatedAt) {
-      store.replaceDocument(remote);
-      store.updateSettings({
-        sync: { lastPushedAt: doc.settings.sync.lastPushedAt, lastFetchedRemoteUpdatedAt: remote.updatedAt }
-      });
-      setStatus('green', 'Synced');
-      return { outcome: 'replaced', remote };
-    }
-    setStatus('green', 'Synced');
-    return { outcome: 'kept-local', remote };
-  }
-
-  function isDirty(doc) {
-    const last = doc.settings.sync.lastPushedAt;
-    return last == null || doc.updatedAt > last;
-  }
-
-  function schedulePush() {
-    setStatus('amber', 'Pending push');
-    if (pushTimer) clearTimeout(pushTimer);
-    pushTimer = setTimeout(() => {
-      pushTimer = null;
-      push().catch((err) => console.error('sync: push failed', err));
-    }, debounceMs);
-  }
-
-  function flushNow() {
-    if (pushTimer) {
-      clearTimeout(pushTimer);
-      pushTimer = null;
-    }
-    return push();
-  }
-
-  return { createGist, push, pull, schedulePush, flushNow, isDirty: () => isDirty(store.getDocument()) };
-}
-```
-
-- [ ] **Step 4: Run tests, expect pass**
-
-Run: `node --test tests/sync.test.js`
-Expected: all tests pass.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/sync.js tests/sync.test.js
-git commit -m "$(cat <<'EOF'
-feat: add gist sync with debounced push, pull, and conflict surface
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
-
----
-
-## Task 8: UI primitives (`src/ui/components.js`)
+## Task 7: UI primitives (`src/ui/components.js`)
 
 **Files:**
 - Create: `src/ui/components.js`
@@ -1410,10 +1078,6 @@ export function toast(message, action = null) {
   );
   root.replaceChildren(node);
   toastTimer = setTimeout(() => root.replaceChildren(), 6000);
-}
-
-export function statusDot(state, message) {
-  return h('span', { class: `status-dot status-${state}`, title: message, 'aria-label': message });
 }
 
 export function chip(text) {
@@ -1441,7 +1105,7 @@ export function confirmDialog(message) {
 ```bash
 git add src/ui/components.js
 git commit -m "$(cat <<'EOF'
-feat: add UI primitives (toast, status dot, chip, confirm)
+feat: add UI primitives (toast, chip, confirm)
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -1450,14 +1114,14 @@ EOF
 
 ---
 
-## Task 9: List / Home view (`src/ui/list.js`)
+## Task 8: List / Home view (`src/ui/list.js`)
 
 **Files:**
 - Create: `src/ui/list.js`
 
 This view renders the home screen per spec §5.1: monthly/yearly total in the top bar, settings cog, sorted subscription rows with relative time, category chip, and (when `url` is set) a small link icon. Rows are tinted by next-payment urgency. Bottom-right floating "+" button routes to `#/new`.
 
-The view is a pure function of `(doc, now)` returning a DOM tree. State changes come from re-rendering via the store subscription in Task 12.
+The view is a pure function of `(doc, now)` returning a DOM tree. State changes come from re-rendering via the store subscription in Task 11.
 
 - [ ] **Step 1: Implement `src/ui/list.js`**
 
@@ -1465,7 +1129,7 @@ The view is a pure function of `(doc, now)` returning a DOM tree. State changes 
 import { h } from '../lib/dom.js';
 import { totalMonthly, totalYearly } from '../totals.js';
 import { parseISODate, daysBetween, relativeFromNow } from '../lib/date.js';
-import { chip, statusDot } from './components.js';
+import { chip } from './components.js';
 
 const CURRENCY_SYMBOL = { GBP: '£', USD: '$', EUR: '€' };
 
@@ -1490,14 +1154,13 @@ function freqLabel(sub) {
   }
 }
 
-export function listView(doc, syncStatus, now = new Date()) {
+export function listView(doc, now = new Date()) {
   const subs = [...doc.subscriptions].sort(
     (a, b) => a.nextPaymentDate.localeCompare(b.nextPaymentDate)
   );
   const currency = doc.settings.currency;
   return h('div', { class: 'screen screen-list' },
     h('header', { class: 'topbar' },
-      statusDot(syncStatus.state, syncStatus.message),
       h('div', { class: 'totals' },
         h('span', { class: 'total-mo' }, `${fmtAmount(totalMonthly(subs), currency)} /mo`),
         h('span', { class: 'total-yr' }, `${fmtAmount(totalYearly(subs), currency)} /yr`)
@@ -1538,15 +1201,14 @@ EOF
 
 ---
 
-## Task 10: Add / Edit view (`src/ui/form.js`)
+## Task 9: Add / Edit view (`src/ui/form.js`)
 
 **Files:**
 - Create: `src/ui/form.js`
 
 Per spec §5.2 + §6 (calendar export). The form covers every field. On save:
 1. `store.addSubscription` or `store.updateSubscription` is called.
-2. `sync.schedulePush()` fires.
-3. A toast offers "Add to Calendar" / "Update Calendar reminder" — tapping it triggers an `.ics` download using `buildIcs`.
+2. A toast offers "Add to Calendar" / "Update Calendar reminder" — tapping it triggers an `.ics` download using `buildIcs`.
 
 For deletes we confirm, then call `store.deleteSubscription` and offer "Remove Calendar reminder?" toast that downloads a `METHOD:CANCEL` `.ics`.
 
@@ -1608,7 +1270,7 @@ function validate(values) {
   return errors;
 }
 
-export function formView({ doc, store, sync, navigate, subId = null }) {
+export function formView({ doc, store, navigate, subId = null }) {
   const editing = subId !== null;
   const existing = editing ? doc.subscriptions.find((s) => s.id === subId) : null;
   if (editing && !existing) {
@@ -1680,7 +1342,6 @@ export function formView({ doc, store, sync, navigate, subId = null }) {
     } else {
       saved = store.addSubscription(values);
     }
-    sync.schedulePush?.();
     const ics = buildIcs(saved, doc.settings, { baseUrl: BASE_URL, method: 'REQUEST' });
     navigate('#/');
     toast(editing ? 'Saved. Update Calendar reminder?' : 'Saved. Add reminders to Calendar?', {
@@ -1694,7 +1355,6 @@ export function formView({ doc, store, sync, navigate, subId = null }) {
     if (!ok) return;
     const cancelIcs = buildIcs(existing, doc.settings, { baseUrl: BASE_URL, method: 'CANCEL' });
     store.deleteSubscription(existing.id);
-    sync.schedulePush?.();
     navigate('#/');
     toast('Deleted. Remove Calendar reminder?', {
       label: 'Remove',
@@ -1722,18 +1382,15 @@ EOF
 
 ---
 
-## Task 11: Settings view (`src/ui/settings.js`)
+## Task 10: Settings view (`src/ui/settings.js`)
 
 **Files:**
 - Create: `src/ui/settings.js`
 
-Per spec §5.3 and §7.1. The view exposes:
+Per spec §5.3. The view exposes:
 - Default currency (read-only "GBP" with a tooltip "Locked to GBP in v1").
 - Default reminder days (number input).
-- Gist sync: paste-token flow (when not connected), status row, "Sync now", "Disconnect" (when connected).
 - Export JSON / Import JSON.
-
-The token itself is held in a closure inside `app.js`, not in the document. The settings view receives `connectGist`, `syncNow`, `disconnect` callbacks.
 
 - [ ] **Step 1: Implement `src/ui/settings.js`**
 
@@ -1741,13 +1398,7 @@ The token itself is held in a closure inside `app.js`, not in the document. The 
 import { h } from '../lib/dom.js';
 import { toast, confirmDialog } from './components.js';
 
-export function settingsView({ doc, store, callbacks }) {
-  const connected = Boolean(doc.settings.gistId && doc.settings.tokenHint);
-
-  const tokenInput = h('input', {
-    type: 'password', autocomplete: 'off', placeholder: 'ghp_...', name: 'token', class: 'token-input'
-  });
-
+export function settingsView({ doc, store }) {
   return h('div', { class: 'screen screen-settings' },
     h('header', { class: 'topbar' },
       h('a', { href: '#/', class: 'back' }, '← Back'),
@@ -1772,36 +1423,8 @@ export function settingsView({ doc, store, callbacks }) {
     ),
 
     h('section', null,
-      h('h2', null, 'GitHub Gist sync'),
-      connected
-        ? h('div', null,
-            h('p', null, `Connected. Token ${doc.settings.tokenHint}. Last push: ${doc.settings.sync.lastPushedAt ?? 'never'}.`),
-            h('button', { class: 'btn-primary', onClick: () => callbacks.syncNow().then(() => toast('Synced.')).catch((e) => toast('Sync failed: ' + e.message)) }, 'Sync now'),
-            h('button', { class: 'btn-secondary', onClick: async () => {
-              if (await confirmDialog('Disconnect from GitHub Gist? Your local data stays.')) {
-                callbacks.disconnect();
-                toast('Disconnected.');
-              }
-            } }, 'Disconnect')
-          )
-        : h('div', null,
-            h('p', null, 'Paste a fine-grained personal access token with gist scope only.'),
-            tokenInput,
-            h('button', { class: 'btn-primary', onClick: async () => {
-              const token = tokenInput.value.trim();
-              if (!token) { toast('Paste a token first.'); return; }
-              try {
-                await callbacks.connectGist(token);
-                toast('Connected.');
-              } catch (e) {
-                toast('Connection failed: ' + e.message);
-              }
-            } }, 'Connect')
-          )
-    ),
-
-    h('section', null,
       h('h2', null, 'Backup'),
+      h('p', { class: 'hint' }, 'Save a JSON snapshot to Files / iCloud Drive so you can restore after a cache wipe. Recommended monthly.'),
       h('button', { class: 'btn-secondary', onClick: () => {
         const blob = new Blob([store.exportJson()], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1837,7 +1460,7 @@ export function settingsView({ doc, store, callbacks }) {
 ```bash
 git add src/ui/settings.js
 git commit -m "$(cat <<'EOF'
-feat: add settings view (defaults, gist sync, JSON export/import)
+feat: add settings view (defaults + JSON export/import)
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -1846,21 +1469,20 @@ EOF
 
 ---
 
-## Task 12: App entry, router, and config (`src/app.js`, `src/config.js`)
+## Task 11: App entry, router, and config (`src/app.js`, `src/config.js`)
 
 **Files:**
 - Create: `src/config.js`
 - Create: `src/app.js`
 
-`app.js` wires everything together: hash-based router, store and sync init, status callback, re-render on store changes, online/offline retry.
-
-The PAT is stored in `localStorage` under `subtracker.gistToken` (not in the document — spec §4 notes). On boot we read it; the sync client is created only when a token exists.
+`app.js` wires everything together: hash-based router, store init, re-render on store changes. There is no auto-sync in v1 — the store persists to `localStorage` on every mutation, and the user uses the manual JSON export/import in Settings for off-device backup.
 
 - [ ] **Step 1: Implement `src/config.js`**
 
 ```js
-// Set this to the deployed site URL (no trailing slash) before going live.
-// It is embedded into .ics DESCRIPTION fields so events deep-link back here.
+// BASE_URL is embedded into .ics DESCRIPTION fields so events deep-link back
+// here. Resolved from the runtime location, so it works in dev (localhost) and
+// in production (GitHub Pages) without hand-editing.
 export const BASE_URL = window.location.origin + window.location.pathname.replace(/\/$/, '');
 ```
 
@@ -1868,17 +1490,12 @@ export const BASE_URL = window.location.origin + window.location.pathname.replac
 
 ```js
 import { createStore } from './store.js';
-import { createSync } from './sync.js';
 import { listView } from './ui/list.js';
 import { formView } from './ui/form.js';
 import { settingsView } from './ui/settings.js';
 import { mount } from './lib/dom.js';
 
-const TOKEN_KEY = 'subtracker.gistToken';
 const rootEl = document.getElementById('app-root');
-let syncStatus = { state: 'grey', message: 'Not connected' };
-let sync = null;
-let token = localStorage.getItem(TOKEN_KEY);
 
 const store = createStore({
   storage: localStorage,
@@ -1886,30 +1503,7 @@ const store = createStore({
   uuid: () => crypto.randomUUID()
 });
 
-function buildSync(t) {
-  return createSync({
-    store,
-    fetch: (...args) => fetch(...args),
-    token: t,
-    onStatusChange: (s) => { syncStatus = s; render(); }
-  });
-}
-
-if (token) {
-  sync = buildSync(token);
-  if (store.getDocument().settings.gistId) {
-    sync.pull().catch((err) => console.error('Initial pull failed', err));
-  }
-}
-
-store.subscribe(() => {
-  if (sync) sync.schedulePush();
-  render();
-});
-
-window.addEventListener('online', () => {
-  if (sync && sync.isDirty()) sync.push().catch((err) => console.error('Online push failed', err));
-});
+store.subscribe(() => render());
 
 function navigate(hash) {
   window.location.hash = hash;
@@ -1920,37 +1514,14 @@ function render() {
   const hash = window.location.hash || '#/';
   let view;
   if (hash === '#/' || hash === '') {
-    view = listView(doc, syncStatus, new Date());
+    view = listView(doc, new Date());
   } else if (hash === '#/new') {
-    view = formView({ doc, store, sync: sync ?? { schedulePush: () => {} }, navigate });
+    view = formView({ doc, store, navigate });
   } else if (hash.startsWith('#/edit/')) {
     const id = hash.slice('#/edit/'.length);
-    view = formView({ doc, store, sync: sync ?? { schedulePush: () => {} }, navigate, subId: id });
+    view = formView({ doc, store, navigate, subId: id });
   } else if (hash === '#/settings') {
-    view = settingsView({
-      doc,
-      store,
-      callbacks: {
-        connectGist: async (t) => {
-          localStorage.setItem(TOKEN_KEY, t);
-          token = t;
-          sync = buildSync(t);
-          await sync.createGist();
-        },
-        syncNow: async () => {
-          if (!sync) throw new Error('Not connected');
-          await sync.pull();
-          if (sync.isDirty()) await sync.flushNow();
-        },
-        disconnect: () => {
-          localStorage.removeItem(TOKEN_KEY);
-          token = null;
-          sync = null;
-          store.updateSettings({ gistId: null, tokenHint: null });
-          syncStatus = { state: 'grey', message: 'Not connected' };
-        }
-      }
-    });
+    view = settingsView({ doc, store });
   } else {
     navigate('#/');
     return;
@@ -1976,7 +1547,7 @@ EOF
 
 ---
 
-## Task 13: HTML shell and stylesheet (`index.html`, `styles/app.css`)
+## Task 12: HTML shell and stylesheet (`index.html`, `styles/app.css`)
 
 **Files:**
 - Create: `index.html`
@@ -2121,7 +1692,7 @@ EOF
 
 ---
 
-## Task 14: PWA manifest and service worker (`manifest.webmanifest`, `sw.js`)
+## Task 13: PWA manifest and service worker (`manifest.webmanifest`, `sw.js`)
 
 **Files:**
 - Create: `manifest.webmanifest`
@@ -2157,7 +1728,6 @@ const SHELL = [
   './styles/app.css',
   './src/app.js',
   './src/store.js',
-  './src/sync.js',
   './src/ics.js',
   './src/totals.js',
   './src/config.js',
@@ -2188,8 +1758,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin === 'https://api.github.com') return; // never cache API calls
   event.respondWith(
     caches.match(event.request).then((cached) => cached ?? fetch(event.request))
   );
@@ -2198,7 +1766,7 @@ self.addEventListener('fetch', (event) => {
 
 - [ ] **Step 3: Bump CACHE_NAME convention**
 
-Anyone making a code change later must bump `CACHE_NAME` (e.g., `subtracker-shell-v2`) so the service worker picks up the new shell. Note this in the README in Task 16.
+Anyone making a code change later must bump `CACHE_NAME` (e.g., `subtracker-shell-v2`) so the service worker picks up the new shell. Note this in the README in Task 15.
 
 - [ ] **Step 4: Commit**
 
@@ -2214,7 +1782,7 @@ EOF
 
 ---
 
-## Task 15: Icons (`tools/`, `icons/`)
+## Task 14: Icons (`tools/`, `icons/`)
 
 **Files:**
 - Create: `tools/icon-source.svg`
@@ -2294,7 +1862,7 @@ EOF
 
 ---
 
-## Task 16: GitHub Actions, README, and on-device verification checklist
+## Task 15: GitHub Actions, README, and on-device verification checklist
 
 **Files:**
 - Create: `.github/workflows/test.yml`
@@ -2329,7 +1897,7 @@ Create `README.md`:
 ```markdown
 # Subscription Tracker
 
-Personal PWA for tracking recurring subscriptions on iPhone. Calendar reminders via per-subscription `.ics` exports. Data in `localStorage` with auto-sync to a private GitHub Gist.
+Personal PWA for tracking recurring subscriptions on iPhone. Calendar reminders via per-subscription `.ics` exports. Data lives in `localStorage`; manual JSON export/import to Files / iCloud Drive is the durability path. Gist auto-sync is planned for v2.
 
 See `docs/superpowers/specs/2026-05-16-subscription-tracker-design.md` for the full design.
 
@@ -2355,15 +1923,11 @@ Whenever you change browser-side code, bump `CACHE_NAME` in `sw.js` so the servi
 3. Open from the home screen so it runs in standalone mode.
 4. Recommended: open the Calendar app and create a new calendar named "Subscriptions" first; use it as the destination when prompted by `.ics` downloads.
 
-## Connect Gist sync
+## Backup
 
-1. On GitHub, create a fine-grained personal access token at `https://github.com/settings/personal-access-tokens/new`:
-   - Resource owner: yourself.
-   - Repository access: *None* (gists are user-scoped).
-   - Permissions → **Gists: Read and write** (no other scopes).
-   - Expiration: as long as you're comfortable with (e.g., 1 year).
-2. Copy the token (shown once).
-3. In the app: Settings → paste token → Connect.
+This app stores everything in your iPhone's local Safari storage. If you clear Safari data, the data is gone. Use Settings → **Export JSON** to save a snapshot to the Files app (which auto-syncs to iCloud Drive). Recommended monthly. Restore via Settings → **Import JSON** → "Replace".
+
+Auto-sync to a private GitHub Gist is planned for v2; see the design spec.
 
 ## Manual smoke test (run after every deploy)
 
@@ -2374,10 +1938,10 @@ Whenever you change browser-side code, bump `CACHE_NAME` in `sw.js` so the servi
 - [ ] In Calendar, the event appears on the next payment date with an alarm at the right offset.
 - [ ] Edit the subscription, change the amount, Save → "Update" toast → re-download `.ics`. The existing Calendar event updates (same UID).
 - [ ] Delete the subscription → "Remove" toast → import the CANCEL `.ics`. Calendar event is removed.
-- [ ] Settings → Connect → paste token → confirms gist created. Edit a sub → wait 3s → status dot stays green.
-- [ ] Force-quit Safari, clear site data, reopen → empty state. Reconnect with the same token → data restored from gist.
-- [ ] Settings → Export JSON. File saves to Files / iCloud Drive. Import the file back with "merge" → no duplicates.
-- [ ] Toggle airplane mode → app still works → status dot goes amber on save → comes back green on reconnect.
+- [ ] Settings → Export JSON. File saves to Files / iCloud Drive.
+- [ ] Force-quit Safari, clear site data, reopen → empty state. Settings → Import JSON → pick the exported file → "Replace" → data restored.
+- [ ] Import a second copy with "Merge" instead of "Replace" → no duplicates.
+- [ ] Toggle airplane mode → app still works fully (no network calls expected in v1).
 ```
 
 - [ ] **Step 3: Commit**
@@ -2399,7 +1963,7 @@ Expected: every test passes. If anything fails, fix it before proceeding to depl
 
 ---
 
-## Task 17: Deploy and on-device verification
+## Task 16: Deploy and on-device verification
 
 This task is not code — it's the deploy + manual verification gate before declaring v1 shipped. Treat each item as required.
 
@@ -2433,53 +1997,35 @@ Open a brief `RELEASE.md` note or a GitHub Release tagged `v1.0.0` summarizing w
 
 ## Self-Review Notes
 
-I checked each spec requirement against the plan tasks. Coverage:
+Spec coverage check after scope reduction:
 
 - §2 v1 scope:
-  - Add/edit/delete → Tasks 5, 10
-  - List view with totals → Tasks 4, 9
-  - Per-subscription Calendar reminders → Tasks 6, 10
-  - Auto-sync to private gist → Tasks 7, 11, 12
-  - Manual JSON export/import → Tasks 5, 11
-  - Installable PWA + offline shell → Tasks 13, 14, 15
+  - Add / edit / delete → Tasks 5, 9
+  - List view with totals → Tasks 4, 8
+  - Per-subscription Calendar reminders → Tasks 6, 9
+  - Manual JSON export/import → Tasks 5, 10
+  - Installable PWA + offline shell → Tasks 12, 13, 14
 - §4 data model → Task 5 (and consumed everywhere)
-- §5 screens → Tasks 9 (list), 10 (form), 11 (settings), 12 (router)
-- §6 calendar flow incl. `URL` and trial event → Task 6 + Task 10
-- §7 sync incl. last-write-wins, dirty flag, failure modes → Task 7 + Task 12
-- §8 export/import → Task 5 + Task 11
-- §9 PWA specifics → Tasks 13, 14, 15
+- §5 screens → Task 8 (list), Task 9 (form), Task 10 (settings), Task 11 (router)
+- §6 calendar flow incl. `URL` and trial event → Task 6 + Task 9
+- §7 sync (deferred to v2) → no v1 task, intentionally
+- §8 export/import → Task 5 + Task 10
+- §9 PWA specifics → Tasks 12, 13, 14
 - §10 code structure → File Map at the top of this plan
-- §11 testing → TDD in every code task; `node:test` runner declared in Task 1; CI in Task 16
-- §12 v2 backlog → not implemented, intentionally
+- §11 testing → TDD in every code task; `node:test` runner declared in Task 1; CI in Task 15
+- §12 v2 backlog (CSV import, gist sync, multi-currency, push, analytics, multi-device) → not implemented, intentionally
 - §13 open questions → none
 
-The "Later (post-v2)" Open Banking item is intentionally out of scope.
-
 Type / name consistency check:
-- `store.addSubscription / updateSubscription / deleteSubscription / updateSettings / replaceDocument / exportJson / importJson / subscribe / getDocument` — used consistently across Tasks 5, 7, 10, 11, 12.
-- `sync.createGist / push / pull / schedulePush / flushNow / isDirty` — used consistently across Tasks 7, 11, 12.
-- `buildIcs(sub, settings, { baseUrl, method })` — same signature in Tasks 6 and 10.
-- `BASE_URL` exported from `src/config.js` (Task 12), imported by `src/ui/form.js` (Task 10).
+- `store.addSubscription / updateSubscription / deleteSubscription / updateSettings / replaceDocument / exportJson / importJson / subscribe / getDocument` — used consistently across Tasks 5, 9, 10, 11.
+- `buildIcs(sub, settings, { baseUrl, method })` — same signature in Tasks 6 and 9.
+- `BASE_URL` exported from `src/config.js` (Task 11), imported by `src/ui/form.js` (Task 9).
 - Subscription fields used in `list.js`, `form.js`, `ics.js` all appear in the shape produced by `store.addSubscription`.
 
 No placeholders remain.
-
-### Known gap worth flagging before execution
-
-The spec's §7.1 says "connect" always **creates a new gist**. That matches the plan as written. But during brainstorming you also said: *"After a cache wipe, paste the token again and the app pulls everything back."* That doesn't quite work with always-create — a cache-wipe means the local document is empty, so creating a new gist would push an empty document and leave the original backup gist orphaned. Two ways to close the gap (decide before starting Task 12):
-
-1. **Discover-or-create on connect.** On "Connect", `GET /gists` and look for one containing `subscription-tracker.json`. If found, use it and `pull`. Otherwise `createGist`. Small extra request, makes cache-wipe recovery automatic.
-2. **Stay strict to spec.** After a cache wipe, the user restores via the manual JSON export/import path instead. No code change needed.
-
-If you want option 1, ask me to patch the spec §7.1 and Task 7 / Task 12 before starting execution. If you want option 2, we keep the plan as-is.
 
 ---
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-05-16-subscription-tracker.md`. Two execution options:
-
-1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration.
-2. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.
-
-Which approach?
+Execution mode: **subagent-driven** (chosen by user). Implementation begins with Task 1 dispatched as a fresh subagent. Review between tasks.
