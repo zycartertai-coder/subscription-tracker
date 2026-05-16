@@ -383,7 +383,8 @@ test('totalMonthly sums monthly equivalents', () => {
     { amount: 12.99, frequency: 'monthly' },
     { amount: 120, frequency: 'yearly' }
   ];
-  assert.equal(totalMonthly(subs), 22.99);
+  const v = totalMonthly(subs);
+  assert.ok(Math.abs(v - 22.99) < 0.001, `expected ~22.99, got ${v}`);
 });
 
 test('totalYearly sums yearly equivalents', () => {
